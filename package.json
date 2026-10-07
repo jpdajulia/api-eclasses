@@ -1,6 +1,16 @@
 {
+  "name": "api-eclasses",
+  "version": "1.0.0",
+  "description": "API REST do E-Classes (GamerClass) com Express + Supabase",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
     "express": "^5.2.1"
   }
 }
