@@ -117,8 +117,23 @@ function responderErro(res, erro) {
     if (erro.code === '23503') return res.status(400).json({ erro: 'Referência inválida: jogo ou time não existe' });
     if (erro.code === '23505') return res.status(409).json({ erro: 'Já existe um registro com esse valor' });
     if (erro.code === '23514') return res.status(400).json({ erro: 'Dados inválidos para este registro' });
-    console.error(erro);
-    return res.status(500).json({ erro: 'Erro interno do servidor' });
+    console.error('Erro do Supabase/servidor:', erro);
+    return res.status(500).json({
+        erro: 'Erro interno do servidor',
+        detalhe: erro.message || String(erro),
+        codigo: erro.code,
+        dica: dicaDoErro(erro),
+    });
+}
+
+// Traduz os erros mais comuns de configuração do Supabase
+function dicaDoErro(erro) {
+    const msg = `${erro.message || ''} ${erro.code || ''}`;
+    if (/fetch failed|ENOTFOUND|ECONNREFUSED/i.test(msg)) return 'Não conectou ao Supabase: confira SUPABASE_URL no .env (formato https://xxxx.supabase.co, sem /rest/v1 no final).';
+    if (/PGRST205|42P01|schema cache/i.test(msg)) return 'As tabelas não existem: rode o schema.sql no SQL Editor do Supabase.';
+    if (/42501|permission denied|row-level security/i.test(msg)) return 'Sem permissão: use a chave service_role / secret (não a anon / publishable) em SUPABASE_SERVICE_KEY.';
+    if (/Invalid API key|JWT|PGRST301|401/i.test(msg)) return 'Chave inválida: confira SUPABASE_SERVICE_KEY (sem aspas, sem espaços, copiada inteira).';
+    return undefined;
 }
 
 const rota = (fn) => async (req, res) => {
@@ -192,6 +207,18 @@ for (const [caminho, rec] of Object.entries(recursos)) {
 app.use((req, res) => {
     res.status(404).json({ erro: 'Rota não encontrada' });
 });
+
+// Testa a conexão com o Supabase ao iniciar
+(async () => {
+    try {
+        const { error } = await supabase.from('games').select('id').limit(1);
+        if (error) throw error;
+        console.log('Supabase conectado com sucesso');
+    } catch (erro) {
+        console.error('FALHA ao conectar no Supabase:', erro.message || erro);
+        console.error('Dica:', dicaDoErro(erro) || 'veja a mensagem acima');
+    }
+})();
 
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
